@@ -1,0 +1,43 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Python Virtual Environment
+.venv/
+venv/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VS Code / IDE
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Local Chroma Vector Database
+chroma_db/
+ev_chroma_db/
+
+# Research Documents - kept locally
+Documents/
+Documents.zip
+
+# Logs & Temporary Files
+*.log
+*.tmp
+*.temp
+
+# Python Build Files
+build/
+dist/
+*.egg-info/

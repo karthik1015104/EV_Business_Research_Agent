@@ -1,0 +1,10 @@
+year,financial_year,company,ev_sales,yoy_growth_pct,metric_definition,data_quality,source,source_url
+2024,FY2024,Hyundai,2120,,EV sales,official_company_source,Hyundai FY25 Q4 Investor Presentation,https://www.hyundai.com/content/dam/hyundai/in/en/data/investor-relations/quaterly-financials/q4-investor-presentation.pdf
+2025,FY2025,Hyundai,3969,87.21698113207547,EV sales,official_company_source,Hyundai FY25 Q4 Investor Presentation,https://www.hyundai.com/content/dam/hyundai/in/en/data/investor-relations/quaterly-financials/q4-investor-presentation.pdf
+2023,FY2023,Mahindra,2416,,Electric 4-wheeler sales,official_company_source,Mahindra FY24 Annual Report,https://www.mahindra.com/sites/default/files/2024-06/MM-Annual-Report-2023-24.pdf
+2024,FY2024,Mahindra,8025,232.16059602649008,Electric 4-wheeler sales,official_company_source,Mahindra FY24 Annual Report,https://www.mahindra.com/sites/default/files/2024-06/MM-Annual-Report-2023-24.pdf
+2025,FY2025,Mahindra,14183,76.73520249221184,Electric 4-wheeler sales,official_company_source,Mahindra FY25 Annual Report,https://www.mahindra.com/annual-report-FY2025/
+2022,FY2022,Tata Motors,19106,,EV sales (domestic PV),official_company_source,Tata Motors Q4 FY22 Sales Release,https://www.tatamotors.com/press-releases/tata-motors-registered-total-sales-of-243459-units-in-q4-fy22/
+2023,FY2023,Tata Motors,50043,161.92295613943264,EV sales (IB + Domestic),official_company_source,Tata Motors Q4 FY23 Sales Release,https://www.tatamotors.com/press-releases/tata-motors-registers-total-sales-of-251822-units-in-q4-fy23-up-3-over-q4-fy22/
+2024,FY2024,Tata Motors,73833,47.53911635993047,EV sales (IB + Domestic),official_company_source,Tata Motors Q4 FY24 Sales Release,https://www.tatamotors.com/wp-content/uploads/2024/04/Tata-Motors-Sales-Release-Q4-FY24.pdf
+2025,FY2025,Tata Motors,64276,-12.944076496959356,EV sales (IB + Domestic),official_company_source,Tata Motors Q4 FY25 Sales Release,https://static-assets.tatamotors.com/Production/www-tatamotors-com-NEW/wp-content/uploads/2025/04/Tata-Motors-Sales-Release-Q4-FY25.pdf
