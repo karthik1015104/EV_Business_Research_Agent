@@ -16,10 +16,14 @@ Pipeline:
 
 The module preserves source, document, category,
 and page-level metadata for research provenance.
+
+The vector database is built automatically when it
+does not already exist.
 """
 
 from pathlib import Path
 from typing import List, Dict
+import shutil
 
 import torch
 from pypdf import PdfReader
@@ -36,26 +40,20 @@ from langchain_chroma import Chroma
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-DOCUMENTS_DIR = (
-    PROJECT_ROOT / "documents"
-)
+# IMPORTANT:
+# Keep the capitalization exactly as used in the repository.
+DOCUMENTS_DIR = PROJECT_ROOT / "Documents"
 
-VECTOR_DB_DIR = (
-    PROJECT_ROOT / "chroma_db"
-)
+VECTOR_DB_DIR = PROJECT_ROOT / "chroma_db"
 
-COLLECTION_NAME = (
-    "ev_business_research"
-)
+COLLECTION_NAME = "ev_business_research"
 
 
 # ============================================================
 # RAG CONFIGURATION
 # ============================================================
 
-EMBEDDING_MODEL_NAME = (
-    "sentence-transformers/all-MiniLM-L6-v2"
-)
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 CHUNK_SIZE = 1200
 CHUNK_OVERLAP = 200
@@ -76,8 +74,9 @@ def load_pdf_documents() -> List[Document]:
 
     if not DOCUMENTS_DIR.exists():
         raise FileNotFoundError(
-            f"Documents directory not found:\n"
-            f"{DOCUMENTS_DIR}"
+            f"Research documents directory not found:\n"
+            f"{DOCUMENTS_DIR}\n\n"
+            f"Make sure the repository contains the Documents/ folder."
         )
 
     pdf_files = sorted(
@@ -98,9 +97,7 @@ def load_pdf_documents() -> List[Document]:
 
         try:
 
-            reader = PdfReader(
-                str(pdf_path)
-            )
+            reader = PdfReader(str(pdf_path))
 
             for page_number, page in enumerate(
                 reader.pages,
@@ -118,8 +115,8 @@ def load_pdf_documents() -> List[Document]:
                                 "category": category,
                                 "file_name": pdf_path.name,
                                 "page": page_number,
-                                "source": pdf_path.name
-                            }
+                                "source": pdf_path.name,
+                            },
                         )
                     )
 
@@ -132,7 +129,8 @@ def load_pdf_documents() -> List[Document]:
 
     if not documents:
         raise ValueError(
-            "No readable PDF text was extracted."
+            "No readable PDF text was extracted "
+            "from the research corpus."
         )
 
     return documents
@@ -143,24 +141,22 @@ def load_pdf_documents() -> List[Document]:
 # ============================================================
 
 def chunk_documents(
-    documents: List[Document]
+    documents: List[Document],
 ) -> List[Document]:
     """
     Split extracted documents into overlapping chunks.
     """
 
-    text_splitter = (
-        RecursiveCharacterTextSplitter(
-            chunk_size=CHUNK_SIZE,
-            chunk_overlap=CHUNK_OVERLAP,
-            separators=[
-                "\n\n",
-                "\n",
-                ". ",
-                " ",
-                ""
-            ]
-        )
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        separators=[
+            "\n\n",
+            "\n",
+            ". ",
+            " ",
+            "",
+        ],
     )
 
     chunks = text_splitter.split_documents(
@@ -192,17 +188,15 @@ def create_embedding_model():
         else "cpu"
     )
 
-    embedding_model = (
-        HuggingFaceEmbeddings(
-            model_name=EMBEDDING_MODEL_NAME,
-            model_kwargs={
-                "device": device
-            },
-            encode_kwargs={
-                "normalize_embeddings": True,
-                "batch_size": 32
-            }
-        )
+    embedding_model = HuggingFaceEmbeddings(
+        model_name=EMBEDDING_MODEL_NAME,
+        model_kwargs={
+            "device": device,
+        },
+        encode_kwargs={
+            "normalize_embeddings": True,
+            "batch_size": 32,
+        },
     )
 
     return embedding_model
@@ -215,7 +209,7 @@ def create_embedding_model():
 def build_vector_database(
     chunks: List[Document],
     embedding_model=None,
-    batch_size: int = 256
+    batch_size: int = 256,
 ):
     """
     Create a Chroma vector database from document chunks.
@@ -231,13 +225,20 @@ def build_vector_database(
         )
 
     if embedding_model is None:
-        embedding_model = (
-            create_embedding_model()
+        embedding_model = create_embedding_model()
+
+    # Always start with a clean database when rebuilding.
+    # This prevents duplicate chunks if the build function
+    # is accidentally executed more than once.
+    if VECTOR_DB_DIR.exists():
+        shutil.rmtree(
+            VECTOR_DB_DIR,
+            ignore_errors=True,
         )
 
     VECTOR_DB_DIR.mkdir(
         parents=True,
-        exist_ok=True
+        exist_ok=True,
     )
 
     vector_db = Chroma(
@@ -251,12 +252,18 @@ def build_vector_database(
     for start in range(
         0,
         len(chunks),
-        batch_size
+        batch_size,
     ):
 
         end = min(
             start + batch_size,
-            len(chunks)
+            len(chunks),
+        )
+
+        print(
+            f"Embedding chunks "
+            f"{start + 1:,}-{end:,} "
+            f"of {len(chunks):,}..."
         )
 
         vector_db.add_documents(
@@ -267,45 +274,146 @@ def build_vector_database(
 
 
 # ============================================================
-# LOAD EXISTING VECTOR DATABASE
+# AUTOMATIC VECTOR DATABASE INITIALIZATION
+# ============================================================
+
+def _build_vector_database_from_documents(
+    embedding_model=None,
+):
+    """
+    Build a fresh Chroma database from the Documents/ corpus.
+    """
+
+    print(
+        "Building Chroma database "
+        "from research documents..."
+    )
+
+    documents = load_pdf_documents()
+
+    print(
+        f"Extracted {len(documents):,} "
+        f"page-level documents."
+    )
+
+    chunks = chunk_documents(
+        documents
+    )
+
+    print(
+        f"Created {len(chunks):,} "
+        f"document chunks."
+    )
+
+    vector_db = build_vector_database(
+        chunks,
+        embedding_model,
+    )
+
+    print(
+        "Chroma vector database created successfully."
+    )
+
+    return vector_db
+
+
+# ============================================================
+# LOAD OR BUILD VECTOR DATABASE
 # ============================================================
 
 def load_vector_database(
-    embedding_model=None
+    embedding_model=None,
 ):
     """
-    Load an existing Chroma vector database.
+    Load the existing Chroma vector database.
 
-    Raises an error if the database has not
-    been built yet.
+    If the database does not exist, automatically build it
+    from the PDFs inside Documents/.
+
+    This makes the project reproducible from a clean clone:
+        git clone
+        install dependencies
+        add API key
+        streamlit run app.py
     """
 
-    if not VECTOR_DB_DIR.exists():
-        raise FileNotFoundError(
-            "Chroma database not found.\n"
-            "Run build_vector_database() first."
-        )
-
     if embedding_model is None:
-        embedding_model = (
-            create_embedding_model()
+        embedding_model = create_embedding_model()
+
+    # --------------------------------------------------------
+    # Case 1: Chroma database does not exist
+    # --------------------------------------------------------
+
+    if not VECTOR_DB_DIR.exists():
+
+        print(
+            "Chroma database not found. "
+            "Building it automatically..."
         )
 
-    vector_db = Chroma(
-        collection_name=COLLECTION_NAME,
-        embedding_function=embedding_model,
-        persist_directory=str(
-            VECTOR_DB_DIR
-        )
-    )
-
-    if vector_db._collection.count() == 0:
-        raise ValueError(
-            "Chroma database exists but "
-            "contains no documents."
+        return _build_vector_database_from_documents(
+            embedding_model
         )
 
-    return vector_db
+    # --------------------------------------------------------
+    # Case 2: Chroma database exists
+    # --------------------------------------------------------
+
+    try:
+
+        vector_db = Chroma(
+            collection_name=COLLECTION_NAME,
+            embedding_function=embedding_model,
+            persist_directory=str(
+                VECTOR_DB_DIR
+            ),
+        )
+
+        count = vector_db._collection.count()
+
+        if count > 0:
+
+            print(
+                f"Existing Chroma database loaded "
+                f"({count:,} chunks)."
+            )
+
+            return vector_db
+
+        # Database directory exists but collection is empty.
+        print(
+            "Chroma database exists but is empty. "
+            "Rebuilding it..."
+        )
+
+        shutil.rmtree(
+            VECTOR_DB_DIR,
+            ignore_errors=True,
+        )
+
+        return _build_vector_database_from_documents(
+            embedding_model
+        )
+
+    except Exception as exc:
+
+        print(
+            f"Existing Chroma database could not be loaded: "
+            f"{exc}"
+        )
+
+        print(
+            "Rebuilding Chroma database from Documents/..."
+        )
+
+        shutil.rmtree(
+            VECTOR_DB_DIR,
+            ignore_errors=True,
+        )
+
+        return _build_vector_database_from_documents(
+            embedding_model
+        )
 
 
 # ============================================================
@@ -315,7 +423,7 @@ def load_vector_database(
 def research_rag_tool(
     query: str,
     k: int = DEFAULT_RETRIEVAL_K,
-    vector_db=None
+    vector_db=None,
 ) -> Dict:
     """
     Retrieve relevant research evidence.
@@ -337,17 +445,15 @@ def research_rag_tool(
 
     k = max(
         1,
-        min(int(k), 8)
+        min(int(k), 8),
     )
 
     if vector_db is None:
         vector_db = load_vector_database()
 
-    retrieved_docs = (
-        vector_db.similarity_search(
-            query,
-            k=k
-        )
+    retrieved_docs = vector_db.similarity_search(
+        query,
+        k=k,
     )
 
     if not retrieved_docs:
@@ -357,45 +463,45 @@ def research_rag_tool(
             "query": query,
             "results": [],
             "result_count": 0,
-            "message": (
-                "No relevant information found."
-            )
+            "message": "No relevant information found.",
         }
 
     results = []
 
     for index, doc in enumerate(
         retrieved_docs,
-        start=1
+        start=1,
     ):
 
         metadata = doc.metadata
 
-        results.append({
-            "result_number": index,
-            "content": doc.page_content,
-            "source": metadata.get(
-                "source",
-                metadata.get(
-                    "file_name",
-                    "Unknown"
-                )
-            ),
-            "page": metadata.get(
-                "page",
-                "Unknown"
-            ),
-            "category": metadata.get(
-                "category",
-                "Unknown"
-            )
-        })
+        results.append(
+            {
+                "result_number": index,
+                "content": doc.page_content,
+                "source": metadata.get(
+                    "source",
+                    metadata.get(
+                        "file_name",
+                        "Unknown",
+                    ),
+                ),
+                "page": metadata.get(
+                    "page",
+                    "Unknown",
+                ),
+                "category": metadata.get(
+                    "category",
+                    "Unknown",
+                ),
+            }
+        )
 
     return {
         "status": "success",
         "query": query,
         "results": results,
-        "result_count": len(results)
+        "result_count": len(results),
     }
 
 
@@ -407,67 +513,17 @@ def initialize_rag():
     """
     Initialize the complete RAG pipeline.
 
-    If a Chroma database already exists, it is loaded.
-    Otherwise, PDFs are extracted, chunked, embedded,
-    and stored in a new Chroma database.
+    If a Chroma database already exists, load it.
+
+    Otherwise:
+        1. Read PDFs from Documents/
+        2. Extract page-level text
+        3. Split text into chunks
+        4. Generate embeddings
+        5. Build and persist Chroma
 
     Returns:
         vector_db
     """
 
-    embedding_model = (
-        create_embedding_model()
-    )
-
-    if VECTOR_DB_DIR.exists():
-
-        try:
-
-            vector_db = load_vector_database(
-                embedding_model
-            )
-
-            print(
-                "✓ Existing Chroma database loaded."
-            )
-
-            return vector_db
-
-        except (
-            FileNotFoundError,
-            ValueError
-        ):
-
-            pass
-
-    print(
-        "Building Chroma database "
-        "from research documents..."
-    )
-
-    documents = load_pdf_documents()
-
-    print(
-        f"✓ Extracted {len(documents):,} "
-        "page-level documents."
-    )
-
-    chunks = chunk_documents(
-        documents
-    )
-
-    print(
-        f"✓ Created {len(chunks):,} "
-        "document chunks."
-    )
-
-    vector_db = build_vector_database(
-        chunks,
-        embedding_model
-    )
-
-    print(
-        "✓ Chroma vector database created."
-    )
-
-    return vector_db
+    return load_vector_database()

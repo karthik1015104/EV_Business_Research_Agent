@@ -16,28 +16,27 @@ __pycache__/
 # Jupyter
 .ipynb_checkpoints/
 
-# VS Code / IDE
+# IDE
 .vscode/
 .idea/
 
-# OS Files
+# OS
 .DS_Store
 Thumbs.db
 
-# Local Chroma Vector Database
+# Generated vector database
 chroma_db/
 ev_chroma_db/
 
-# Research Documents - kept locally
-Documents/
+# Local archive
 Documents.zip
 
-# Logs & Temporary Files
+# Logs & temporary
 *.log
 *.tmp
 *.temp
 
-# Python Build Files
+# Python build
 build/
 dist/
 *.egg-info/

@@ -5,7 +5,6 @@
 # ============================================================
 
 import streamlit as st
-import os
 from pathlib import Path
 
 
@@ -105,6 +104,9 @@ if "agent_error" not in st.session_state:
 
 if "last_result" not in st.session_state:
     st.session_state.last_result = None
+
+if "selected_question" not in st.session_state:
+    st.session_state.selected_question = ""
 
 
 # ============================================================
@@ -213,66 +215,27 @@ def extract_tools_used(response):
 # RUN AGENT
 # ============================================================
 
-def run_business_analysis(
-    agent,
-    question
-):
+def run_business_analysis(agent, question):
 
-    # Important business-analysis instructions.
-    # These are deliberately included at application level
-    # so the Streamlit demo follows the project's data rules.
+    """
+    Send the user's original question directly to the agent.
 
-    enhanced_question = f"""
-You are answering a business research question about
-India's electric passenger-vehicle market.
+    The agent decides:
+    - which tools are required
+    - how much analysis is appropriate
+    - whether research evidence is needed
+    - whether a recommendation is actually requested
 
-USER QUESTION:
-{question}
-
-IMPORTANT DATA RULES:
-
-1. Use the analytical tools for numerical claims.
-2. Use the research tool for company strategy,
-   policy, technology, infrastructure and qualitative evidence.
-3. Never invent data.
-4. Never calculate or describe a company's reported EV
-   sales as its share of India's total EV registrations
-   unless the sales metric and market metric are explicitly
-   comparable.
-5. Tata Motors' reported EV sales may include
-   International Business + Domestic sales.
-6. Mahindra and Hyundai figures may use different
-   reporting definitions.
-7. Therefore, do NOT calculate percentages such as:
-   Tata EV sales / Indian EV registrations.
-8. Do not call the three-company dataset "Indian market share."
-9. Clearly state important comparability limitations.
-10. Separate factual evidence from strategic inference
-    and recommendations.
-11. For research evidence, cite:
-    (Source: document name, p. X)
-
-ANSWER FORMAT:
-
-1. Market assessment
-2. Competitive position
-3. Strategic implications
-4. Key opportunities
-5. Key risk / limitation
-6. Final recommendation
-
-Keep the answer concise and business-oriented.
-Use tables or bullet points where useful.
-Do not unnecessarily repeat the question.
-Finish the recommendation completely.
-"""
+    The application does NOT force every question into
+    a fixed business-analysis template.
+    """
 
     response = agent.invoke(
         {
             "messages": [
                 {
                     "role": "user",
-                    "content": enhanced_question
+                    "content": question.strip()
                 }
             ]
         }
@@ -411,8 +374,9 @@ if st.session_state.agent_error:
 
         1. Your `.env` file contains GROQ_API_KEY.
         2. The `.env` file is in the project root.
-        3. `chroma_db` exists in the project root.
-        4. All packages are installed in the active `.venv`.
+        3. Required Python packages are installed.
+        4. If a research question requires RAG, the research
+           corpus/vector database must be available.
         """
     )
 
@@ -474,10 +438,6 @@ for column, (title, question) in zip(
 # QUESTION INPUT
 # ============================================================
 
-if "selected_question" not in st.session_state:
-    st.session_state.selected_question = ""
-
-
 question = st.text_area(
     "Business question",
     value=st.session_state.selected_question,
@@ -494,7 +454,7 @@ question = st.text_area(
 # ============================================================
 
 run_button = st.button(
-    "🚀 Run Business Analysis",
+    "🚀 Ask Agent",
     type="primary",
     use_container_width=True
 )
@@ -550,9 +510,14 @@ if st.session_state.last_result:
 
     tools_used = result["tools_used"]
 
+    # Clean HTML line breaks from LLM output
+    answer = answer.replace("<br>", "\n")
+    answer = answer.replace("<br/>", "\n")
+    answer = answer.replace("<br />", "\n")
+
     st.divider()
 
-    st.header("Business Analysis")
+    st.header("Agent Response")
 
     # --------------------------------------------------------
     # Answer
@@ -644,6 +609,7 @@ if st.session_state.last_result:
         if tools_used:
 
             for tool in tools_used:
+
                 st.write(
                     f"✓ `{tool}`"
                 )
