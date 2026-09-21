@@ -22,11 +22,11 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 MARKET_DATA_PATH = (
-    PROJECT_ROOT / "data" / "processed" / "india_ev_market.csv"
+    PROJECT_ROOT / "Data" / "processed" / "india_ev_market.csv"
 )
 
 COMPETITOR_DATA_PATH = (
-    PROJECT_ROOT / "data" / "processed" / "competitor_ev_sales.csv"
+    PROJECT_ROOT / "Data" / "processed" / "competitor_ev_sales.csv"
 )
 
 
